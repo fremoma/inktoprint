@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#14161c" />
+<title>InkToPrint — Scanner</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<style>
+  :root{
+    --ink:#14161c; --ink-soft:#1c1f28; --paper:#f3eee4; --paper-dim:#e6ddca;
+    --blue:#2b3a70; --blue-bright:#3f55a8; --oxblood:#b03a2e; --amber:#c2832b;
+    --line:#2c303c; --muted:#8b8f9c;
+    --good:#3f8a5b; --mid:#c2832b; --low:#b03a2e;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{
+    background:var(--ink); color:var(--paper);
+    font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.5;
+    overflow:hidden; display:flex; flex-direction:column;
+    padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  }
+  header{
+    display:flex; align-items:baseline; gap:.6rem; padding:.85rem 1.1rem .7rem;
+    border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  header h1{
+    font-family:"Fraunces",serif; font-weight:900; font-size:1.45rem; margin:0;
+    letter-spacing:-.01em;
+  }
+  header h1 .dot{color:var(--oxblood)}
+  header .tag{font-family:"Spline Sans Mono",monospace; font-size:.62rem; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--muted); margin-left:auto}
+  main{flex:1 1 auto; min-height:0; position:relative; overflow:hidden}
+
+  /* ---- Capture stage ---- */
+  #stage{position:absolute; inset:0; display:flex; flex-direction:column}
+  #viewport{flex:1 1 auto; position:relative; background:#000; overflow:hidden;
+    display:flex; align-items:center; justify-content:center}
+  #video,#shot{max-width:100%; max-height:100%; display:block}
+  #shot{display:none}
+  .frame-guide{position:absolute; inset:7% 6%; border:2px dashed rgba(243,238,228,.45);
+    border-radius:10px; pointer-events:none}
+  .frame-guide::after{content:"Frame the page"; position:absolute; bottom:-1.7rem; left:0; right:0;
+    text-align:center; font-family:"Spline Sans Mono",monospace; font-size:.62rem;
+    letter-spacing:.2em; text-transform:uppercase; color:rgba(243,238,228,.55)}
+  .controls{flex:0 0 auto; display:flex; gap:.55rem; padding:.8rem 1rem; flex-wrap:wrap;
+    border-top:1px solid var(--line); align-items:center}
+
+  button,.btn{
+    font-family:"Spline Sans Mono",monospace; font-weight:500; font-size:.78rem;
+    letter-spacing:.04em; border:1px solid var(--line); background:var(--ink-soft);
+    color:var(--paper); padding:.7rem 1rem; border-radius:9px; cursor:pointer;
+    transition:transform .08s ease, background .15s ease, border-color .15s; user-select:none;
+  }
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--blue); border-color:var(--blue-bright); color:#fff}
+  button.primary:hover{background:var(--blue-bright)}
+  button.accent{background:var(--oxblood); border-color:var(--oxblood); color:#fff}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  .grow{flex:1 1 auto}
+  label.upload{display:inline-flex; align-items:center}
+  label.upload input{display:none}
+
+  .toggles{display:flex; gap:.4rem; align-items:center; font-family:"Spline Sans Mono",monospace;
+    font-size:.66rem; color:var(--muted); letter-spacing:.06em}
+  .chip{padding:.45rem .7rem; border:1px solid var(--line); border-radius:20px; cursor:pointer; color:var(--muted)}
+  .chip.on{background:var(--paper); color:var(--ink); border-color:var(--paper)}
+
+  /* ---- Editor stage ---- */
+  #editor{position:absolute; inset:0; display:none; flex-direction:column}
+  #editor.show{display:flex}
+  .panes{flex:1 1 auto; min-height:0; display:flex; gap:1px; background:var(--line)}
+  .pane{flex:1 1 0; min-width:0; min-height:0; overflow:auto; background:var(--ink)}
+  .pane.image{display:flex; align-items:flex-start; justify-content:center; padding:.6rem; background:#0c0d11}
+  .pane.image img{max-width:100%; height:auto; border-radius:6px; box-shadow:0 6px 30px rgba(0,0,0,.5)}
+  .pane.text{padding:1rem 1.1rem}
+  .pane.text h2{font-family:"Spline Sans Mono",monospace; font-size:.6rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 .6rem}
+  #transcript{outline:none; font-family:"Newsreader",serif; font-size:1.02rem; line-height:1.65;
+    white-space:pre-wrap; min-height:60%}
+  #transcript:empty::before{content:"Transcribed text will appear here…"; color:var(--muted); font-style:italic}
+  .w-low{ text-decoration:underline wavy var(--low); text-underline-offset:3px; background:rgba(176,58,46,.12)}
+  .w-mid{ text-decoration:underline wavy var(--mid); text-underline-offset:3px}
+
+  .editor-bar{flex:0 0 auto; display:flex; gap:.5rem; padding:.7rem 1rem; flex-wrap:wrap;
+    border-top:1px solid var(--line); align-items:center}
+  .legend{font-family:"Spline Sans Mono",monospace; font-size:.6rem; color:var(--muted);
+    letter-spacing:.05em; display:flex; gap:.8rem; align-items:center; margin-right:auto}
+  .legend i{font-style:normal}
+  .swatch{display:inline-block; width:.7rem; height:.7rem; border-radius:2px; vertical-align:middle; margin-right:.25rem}
+
+  /* progress + toast */
+  #progress{position:absolute; left:0; right:0; top:0; height:3px; background:transparent; z-index:30}
+  #progress .bar{height:100%; width:0; background:linear-gradient(90deg,var(--blue-bright),var(--oxblood)); transition:width .2s}
+  #toast{position:absolute; left:50%; bottom:5.5rem; transform:translateX(-50%) translateY(20px);
+    background:var(--paper); color:var(--ink); padding:.6rem 1rem; border-radius:8px;
+    font-family:"Spline Sans Mono",monospace; font-size:.72rem; opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s; z-index:40; max-width:88%; text-align:center}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  canvas#work{display:none}
+  .empty-hint{padding:1.2rem; color:var(--muted); font-style:italic; text-align:center}
+  @media (max-width:560px){ .panes{flex-direction:column} }
+</style>
+</head>
+<body>
+<header>
+  <h1>InkToPrint<span class="dot">.</span></h1>
+  <span class="tag">on-device scanner</span>
+</header>
+
+<main>
+  <div id="progress"><div class="bar"></div></div>
+
+  <!-- CAPTURE -->
+  <section id="stage">
+    <div id="viewport">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="shot" alt="captured page" />
+      <div class="frame-guide" id="guide"></div>
+    </div>
+    <div class="controls">
+      <button id="startCam" class="primary">Start camera</button>
+      <button id="capture" disabled>Capture</button>
+      <label class="upload btn">Upload photo<input id="file" type="file" accept="image/*" /></label>
+      <span class="grow"></span>
+      <div class="toggles">
+        <span>enhance</span>
+        <span class="chip on" id="tGray">grayscale</span>
+        <span class="chip on" id="tThresh">sharpen B/W</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- EDITOR -->
+  <section id="editor">
+    <div class="panes">
+      <div class="pane image"><img id="previewImg" alt="scanned page" /></div>
+      <div class="pane text">
+        <h2>Transcription — tap to edit</h2>
+        <div id="transcript" contenteditable="true" spellcheck="true"></div>
+      </div>
+    </div>
+    <div class="editor-bar">
+      <span class="legend">
+        <i><span class="swatch" style="background:var(--low)"></span>low conf.</i>
+        <i><span class="swatch" style="background:var(--mid)"></span>review</i>
+      </span>
+      <button id="rescan">↺ New scan</button>
+      <button id="expTxt">TXT</button>
+      <button id="expMd">Markdown</button>
+      <button id="expPdf" class="primary">PDF</button>
+      <button id="expDocx" class="accent">DOCX</button>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+</main>
+
+<canvas id="work"></canvas>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const video=$("video"), shot=$("shot"), guide=$("guide"),
+        startCam=$("startCam"), capture=$("capture"), file=$("file"),
+        stage=$("stage"), editor=$("editor"), previewImg=$("previewImg"),
+        transcript=$("transcript"), bar=$("progress").firstElementChild, toast=$("toast"),
+        work=$("work"), tGray=$("tGray"), tThresh=$("tThresh");
+
+  let stream=null, lastDataUrl=null;
+
+  function notify(msg, ms=2600){ toast.textContent=msg; toast.classList.add("show");
+    clearTimeout(notify._t); notify._t=setTimeout(()=>toast.classList.remove("show"), ms); }
+  function setBar(p){ bar.style.width=(p*100).toFixed(0)+"%"; if(p>=1) setTimeout(()=>bar.style.width="0",500); }
+
+  // ---------- Camera ----------
+  startCam.addEventListener("click", async () => {
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
+      video.srcObject = stream; await video.play();
+      capture.disabled=false; startCam.textContent="Camera on"; startCam.disabled=true;
+    }catch(e){
+      notify("Camera unavailable — use Upload photo instead.");
+      console.warn(e);
+    }
+  });
+
+  capture.addEventListener("click", () => {
+    if(!video.videoWidth){ notify("Camera not ready yet."); return; }
+    const c=document.createElement("canvas");
+    c.width=video.videoWidth; c.height=video.videoHeight;
+    c.getContext("2d").drawImage(video,0,0);
+    processImage(c);
+  });
+
+  file.addEventListener("change", e => {
+    const f=e.target.files && e.target.files[0]; if(!f) return;
+    const img=new Image();
+    img.onload=()=>{ const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight;
+      c.getContext("2d").drawImage(img,0,0); processImage(c); URL.revokeObjectURL(img.src); };
+    img.src=URL.createObjectURL(f);
+  });
+
+  // ---------- Preprocess (grayscale / contrast / threshold) ----------
+  function preprocess(srcCanvas){
+    const MAXW=1600;
+    const scale = Math.min(1, MAXW/srcCanvas.width);
+    const w=Math.round(srcCanvas.width*scale), h=Math.round(srcCanvas.height*scale);
+    work.width=w; work.height=h;
+    const ctx=work.getContext("2d");
+    ctx.drawImage(srcCanvas,0,0,w,h);
+    const doGray=tGray.classList.contains("on"), doThresh=tThresh.classList.contains("on");
+    if(!doGray && !doThresh) return;
+    const img=ctx.getImageData(0,0,w,h), d=img.data;
+    // grayscale + mild contrast
+    let sum=0;
+    for(let i=0;i<d.length;i+=4){
+      let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      g=(g-128)*1.15+128;                  // contrast
+      g=Math.max(0,Math.min(255,g));
+      d[i]=d[i+1]=d[i+2]=g; sum+=g;
+    }
+    if(doThresh){
+      // adaptive-ish: threshold around mean, slight bias to keep ink
+      const mean=sum/(d.length/4);
+      const t=mean*0.92;
+      for(let i=0;i<d.length;i+=4){ const v=d[i]<t?0:255; d[i]=d[i+1]=d[i+2]=v; }
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  // ---------- Run pipeline ----------
+  async function processImage(srcCanvas){
+    preprocess(srcCanvas);
+    lastDataUrl = work.toDataURL("image/png");
+    previewImg.src = lastDataUrl;
+    // switch to editor immediately (fast path UI)
+    stage.style.display="none"; editor.classList.add("show");
+    transcript.innerHTML = '<span style="color:var(--muted);font-style:italic">Reading text…</span>';
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+    await runOCR(work);
+  }
+
+  async function runOCR(canvas){
+    if(typeof Tesseract==="undefined"){
+      transcript.innerHTML="";
+      notify("OCR engine offline — type your transcription, export still works.");
+      transcript.focus();
+      return;
+    }
+    setBar(0.05);
+    try{
+      const worker = await Tesseract.createWorker("eng", 1, {
+        logger: m => { if(m.status==="recognizing text") setBar(0.2+0.8*m.progress); }
+      });
+      const { data } = await worker.recognize(canvas);
+      await worker.terminate();
+      renderWords(data);
+      setBar(1);
+      notify("Transcribed — review highlighted words.");
+    }catch(err){
+      console.error(err);
+      transcript.innerHTML="";
+      notify("Couldn’t load OCR data (needs network first time). You can still type & export.");
+      transcript.focus();
+      setBar(1);
+    }
+  }
+
+  function esc(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function renderWords(data){
+    const words = (data.words||[]).filter(w=>w.text && w.text.trim());
+    if(!words.length){
+      transcript.innerHTML = '<span class="empty-hint">No text detected. Try better lighting, the “sharpen B/W” toggle, or type it in.</span>';
+      transcript.focus(); return;
+    }
+    let html="", lastLine=null;
+    for(const w of words){
+      const line = w.line ? w.line.bbox.y0 : (w.bbox? w.bbox.y0:0);
+      if(lastLine!==null && Math.abs(line-lastLine) > 8) html+="\n";
+      else if(lastLine!==null) html+=" ";
+      const c=w.confidence;
+      const cls = c<55 ? "w-low" : c<78 ? "w-mid" : "";
+      html += cls ? `<span class="${cls}">${esc(w.text)}</span>` : esc(w.text);
+      lastLine=line;
+    }
+    transcript.innerHTML=html;
+  }
+
+  // ---------- Toggles ----------
+  [tGray,tThresh].forEach(c=>c.addEventListener("click",()=>c.classList.toggle("on")));
+
+  // ---------- Re-scan ----------
+  $("rescan").addEventListener("click", ()=>{
+    editor.classList.remove("show"); stage.style.display="flex";
+    capture.disabled=true; startCam.disabled=false; startCam.textContent="Start camera";
+    transcript.innerHTML=""; file.value="";
+  });
+
+  // ---------- Exports ----------
+  function plainText(){
+    // contenteditable -> text with line breaks preserved
+    const html = transcript.innerHTML.replace(/<div>/gi,"\n").replace(/<br\s*\/?>/gi,"\n").replace(/<\/div>/gi,"");
+    const tmp=document.createElement("div"); tmp.innerHTML=html;
+    return (tmp.textContent||"").replace(/\u00a0/g," ").trim();
+  }
+  function download(blob, name){
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  }
+  const stamp=()=> new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+
+  $("expTxt").addEventListener("click", ()=>{ download(new Blob([plainText()],{type:"text/plain"}), `scan-${stamp()}.txt`); notify("Saved .txt"); });
+  $("expMd").addEventListener("click", ()=>{
+    const t=plainText(); const md=`# Scanned Document\n\n${t.split("\n").map(l=>l.trim()).join("\n\n")}\n`;
+    download(new Blob([md],{type:"text/markdown"}), `scan-${stamp()}.md`); notify("Saved .md");
+  });
+
+  $("expPdf").addEventListener("click", ()=>{
+    if(!window.jspdf){ notify("PDF library still loading…"); return; }
+    const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
+    const margin=56, width=doc.internal.pageSize.getWidth()-margin*2, height=doc.internal.pageSize.getHeight();
+    doc.setFont("times","normal"); doc.setFontSize(12);
+    const lines=doc.splitTextToSize(plainText(), width);
+    let y=margin;
+    for(const ln of lines){ if(y>height-margin){ doc.addPage(); y=margin; } doc.text(ln,margin,y); y+=18; }
+    doc.save(`scan-${stamp()}.pdf`); notify("Saved .pdf");
+  });
+
+  $("expDocx").addEventListener("click", async ()=>{
+    if(typeof JSZip==="undefined"){ notify("DOCX library still loading…"); return; }
+    const paras = plainText().split("\n").map(p=>p.length?p:" ");
+    const body = paras.map(p=>`<w:p><w:r><w:t xml:space="preserve">${esc(p)}</w:t></w:r></w:p>`).join("");
+    const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
+    const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+    const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+    const zip=new JSZip();
+    zip.file("[Content_Types].xml", contentTypes);
+    zip.folder("_rels").file(".rels", rels);
+    zip.folder("word").file("document.xml", documentXml);
+    const blob=await zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    download(blob, `scan-${stamp()}.docx`); notify("Saved .docx");
+  });
+
+  // ---------- PWA service worker ----------
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
