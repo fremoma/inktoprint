@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#14161c" />
-<title>InkToPrint — Scanner</title>
+<title>InkToPrint — Pro Scanner</title>
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,354 +14,336 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <style>
-  :root{
-    --ink:#14161c; --ink-soft:#1c1f28; --paper:#f3eee4; --paper-dim:#e6ddca;
-    --blue:#2b3a70; --blue-bright:#3f55a8; --oxblood:#b03a2e; --amber:#c2832b;
-    --line:#2c303c; --muted:#8b8f9c;
-    --good:#3f8a5b; --mid:#c2832b; --low:#b03a2e;
-  }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-  html,body{margin:0; height:100%}
-  body{
-    background:var(--ink); color:var(--paper);
-    font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.5;
-    overflow:hidden; display:flex; flex-direction:column;
-    padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
-  }
-  header{
-    display:flex; align-items:baseline; gap:.6rem; padding:.85rem 1.1rem .7rem;
-    border-bottom:1px solid var(--line); flex:0 0 auto;
-  }
-  header h1{
-    font-family:"Fraunces",serif; font-weight:900; font-size:1.45rem; margin:0;
-    letter-spacing:-.01em;
-  }
+  :root{--ink:#14161c;--ink-soft:#1c1f28;--paper:#f3eee4;--blue:#2b3a70;--blue-bright:#3f55a8;
+    --oxblood:#b03a2e;--amber:#c2832b;--line:#2c303c;--muted:#8b8f9c;--good:#3f8a5b}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--ink);color:var(--paper);font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.5;
+    overflow:hidden;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  header{display:flex;align-items:baseline;gap:.6rem;padding:.8rem 1.1rem .6rem;border-bottom:1px solid var(--line);flex:0 0 auto}
+  header h1{font-family:"Fraunces",serif;font-weight:900;font-size:1.4rem;margin:0;letter-spacing:-.01em}
   header h1 .dot{color:var(--oxblood)}
-  header .tag{font-family:"Spline Sans Mono",monospace; font-size:.62rem; letter-spacing:.18em;
-    text-transform:uppercase; color:var(--muted); margin-left:auto}
-  main{flex:1 1 auto; min-height:0; position:relative; overflow:hidden}
-
-  /* ---- Capture stage ---- */
-  #stage{position:absolute; inset:0; display:flex; flex-direction:column}
-  #viewport{flex:1 1 auto; position:relative; background:#000; overflow:hidden;
-    display:flex; align-items:center; justify-content:center}
-  #video,#shot{max-width:100%; max-height:100%; display:block}
-  #shot{display:none}
-  .frame-guide{position:absolute; inset:7% 6%; border:2px dashed rgba(243,238,228,.45);
-    border-radius:10px; pointer-events:none}
-  .frame-guide::after{content:"Frame the page"; position:absolute; bottom:-1.7rem; left:0; right:0;
-    text-align:center; font-family:"Spline Sans Mono",monospace; font-size:.62rem;
-    letter-spacing:.2em; text-transform:uppercase; color:rgba(243,238,228,.55)}
-  .controls{flex:0 0 auto; display:flex; gap:.55rem; padding:.8rem 1rem; flex-wrap:wrap;
-    border-top:1px solid var(--line); align-items:center}
-
-  button,.btn{
-    font-family:"Spline Sans Mono",monospace; font-weight:500; font-size:.78rem;
-    letter-spacing:.04em; border:1px solid var(--line); background:var(--ink-soft);
-    color:var(--paper); padding:.7rem 1rem; border-radius:9px; cursor:pointer;
-    transition:transform .08s ease, background .15s ease, border-color .15s; user-select:none;
-  }
+  header .tag{font-family:"Spline Sans Mono",monospace;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-left:auto}
+  main{flex:1 1 auto;min-height:0;position:relative;overflow:hidden}
+  #stage{position:absolute;inset:0;display:flex;flex-direction:column}
+  #viewport{flex:1 1 auto;position:relative;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  #video{max-width:100%;max-height:100%;display:block}
+  .frame-guide{position:absolute;inset:7% 6%;border:2px dashed rgba(243,238,228,.4);border-radius:10px;pointer-events:none}
+  .frame-guide::after{content:"Frame the page";position:absolute;bottom:-1.6rem;left:0;right:0;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(243,238,228,.5)}
+  .controls{flex:0 0 auto;padding:.65rem 1rem;border-top:1px solid var(--line);max-height:48%;overflow:auto}
+  .row{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center}.row+.row{margin-top:.5rem}
+  button,.btn{font-family:"Spline Sans Mono",monospace;font-weight:500;font-size:.74rem;letter-spacing:.03em;border:1px solid var(--line);
+    background:var(--ink-soft);color:var(--paper);padding:.6rem .9rem;border-radius:9px;cursor:pointer;transition:transform .08s,background .15s;user-select:none}
   button:active{transform:translateY(1px)}
-  button.primary{background:var(--blue); border-color:var(--blue-bright); color:#fff}
-  button.primary:hover{background:var(--blue-bright)}
-  button.accent{background:var(--oxblood); border-color:var(--oxblood); color:#fff}
-  button:disabled{opacity:.4; cursor:not-allowed}
+  button.primary{background:var(--blue);border-color:var(--blue-bright);color:#fff}
+  button.accent{background:var(--oxblood);border-color:var(--oxblood);color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  label.upload{display:inline-flex;align-items:center}label.upload input{display:none}
   .grow{flex:1 1 auto}
-  label.upload{display:inline-flex; align-items:center}
-  label.upload input{display:none}
-
-  .toggles{display:flex; gap:.4rem; align-items:center; font-family:"Spline Sans Mono",monospace;
-    font-size:.66rem; color:var(--muted); letter-spacing:.06em}
-  .chip{padding:.45rem .7rem; border:1px solid var(--line); border-radius:20px; cursor:pointer; color:var(--muted)}
-  .chip.on{background:var(--paper); color:var(--ink); border-color:var(--paper)}
-
-  /* ---- Editor stage ---- */
-  #editor{position:absolute; inset:0; display:none; flex-direction:column}
-  #editor.show{display:flex}
-  .panes{flex:1 1 auto; min-height:0; display:flex; gap:1px; background:var(--line)}
-  .pane{flex:1 1 0; min-width:0; min-height:0; overflow:auto; background:var(--ink)}
-  .pane.image{display:flex; align-items:flex-start; justify-content:center; padding:.6rem; background:#0c0d11}
-  .pane.image img{max-width:100%; height:auto; border-radius:6px; box-shadow:0 6px 30px rgba(0,0,0,.5)}
-  .pane.text{padding:1rem 1.1rem}
-  .pane.text h2{font-family:"Spline Sans Mono",monospace; font-size:.6rem; letter-spacing:.2em;
-    text-transform:uppercase; color:var(--muted); margin:0 0 .6rem}
-  #transcript{outline:none; font-family:"Newsreader",serif; font-size:1.02rem; line-height:1.65;
-    white-space:pre-wrap; min-height:60%}
-  #transcript:empty::before{content:"Transcribed text will appear here…"; color:var(--muted); font-style:italic}
-  .w-low{ text-decoration:underline wavy var(--low); text-underline-offset:3px; background:rgba(176,58,46,.12)}
-  .w-mid{ text-decoration:underline wavy var(--mid); text-underline-offset:3px}
-
-  .editor-bar{flex:0 0 auto; display:flex; gap:.5rem; padding:.7rem 1rem; flex-wrap:wrap;
-    border-top:1px solid var(--line); align-items:center}
-  .legend{font-family:"Spline Sans Mono",monospace; font-size:.6rem; color:var(--muted);
-    letter-spacing:.05em; display:flex; gap:.8rem; align-items:center; margin-right:auto}
-  .legend i{font-style:normal}
-  .swatch{display:inline-block; width:.7rem; height:.7rem; border-radius:2px; vertical-align:middle; margin-right:.25rem}
-
-  /* progress + toast */
-  #progress{position:absolute; left:0; right:0; top:0; height:3px; background:transparent; z-index:30}
-  #progress .bar{height:100%; width:0; background:linear-gradient(90deg,var(--blue-bright),var(--oxblood)); transition:width .2s}
-  #toast{position:absolute; left:50%; bottom:5.5rem; transform:translateX(-50%) translateY(20px);
-    background:var(--paper); color:var(--ink); padding:.6rem 1rem; border-radius:8px;
-    font-family:"Spline Sans Mono",monospace; font-size:.72rem; opacity:0; pointer-events:none;
-    transition:opacity .25s, transform .25s; z-index:40; max-width:88%; text-align:center}
-  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-  canvas#work{display:none}
-  .empty-hint{padding:1.2rem; color:var(--muted); font-style:italic; text-align:center}
-  @media (max-width:560px){ .panes{flex-direction:column} }
+  select{font-family:"Spline Sans Mono",monospace;font-size:.68rem;background:var(--ink-soft);color:var(--paper);border:1px solid var(--line);border-radius:8px;padding:.45rem .55rem}
+  .lbl{font-family:"Spline Sans Mono",monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .chip{padding:.38rem .6rem;border:1px solid var(--line);border-radius:18px;cursor:pointer;color:var(--muted);font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.04em}
+  .chip.on{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+  #editor{position:absolute;inset:0;display:none;flex-direction:column}#editor.show{display:flex}
+  .panes{flex:1 1 auto;min-height:0;display:flex;gap:1px;background:var(--line)}
+  .pane{flex:1 1 0;min-width:0;min-height:0;overflow:auto;background:var(--ink)}
+  .pane.image{display:flex;align-items:flex-start;justify-content:center;padding:.5rem;background:#0c0d11}
+  #imgCanvas{max-width:100%;height:auto;border-radius:6px;box-shadow:0 6px 30px rgba(0,0,0,.5)}
+  .pane.text{padding:.9rem 1.05rem}
+  .pane.text h2{font-family:"Spline Sans Mono",monospace;font-size:.56rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 .55rem}
+  #transcript{outline:none;font-family:"Newsreader",serif;font-size:1.02rem;line-height:1.65;white-space:pre-wrap;min-height:55%}
+  #transcript:empty::before{content:"Transcribed text appears here…";color:var(--muted);font-style:italic}
+  .w-low{text-decoration:underline wavy var(--oxblood);text-underline-offset:3px;background:rgba(176,58,46,.12);cursor:pointer}
+  .w-mid{text-decoration:underline wavy var(--amber);text-underline-offset:3px;cursor:pointer}
+  .w-ok{cursor:pointer}
+  .editor-bar{flex:0 0 auto;padding:.55rem 1rem;border-top:1px solid var(--line)}
+  .legend{font-family:"Spline Sans Mono",monospace;font-size:.56rem;color:var(--muted);letter-spacing:.04em;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .legend i{font-style:normal}.swatch{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;vertical-align:middle;margin-right:.2rem}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.54rem;letter-spacing:.06em;padding:.2rem .48rem;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  .pill.ok{color:var(--good);border-color:var(--good)}.pill.warn{color:var(--amber);border-color:var(--amber)}
+  #progress{position:absolute;left:0;right:0;top:0;height:3px;z-index:30}
+  #progress .bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue-bright),var(--oxblood));transition:width .2s}
+  #toast{position:absolute;left:50%;bottom:5rem;transform:translateX(-50%) translateY(20px);background:var(--paper);color:var(--ink);padding:.55rem 1rem;border-radius:8px;font-family:"Spline Sans Mono",monospace;font-size:.68rem;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:40;max-width:88%;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .empty-hint{padding:1.1rem;color:var(--muted);font-style:italic;text-align:center}
+  @media (max-width:560px){.panes{flex-direction:column}}
 </style>
 </head>
 <body>
 <header>
   <h1>InkToPrint<span class="dot">.</span></h1>
-  <span class="tag">on-device scanner</span>
+  <span class="tag" id="pageTag">pro scanner</span>
 </header>
-
 <main>
   <div id="progress"><div class="bar"></div></div>
 
-  <!-- CAPTURE -->
   <section id="stage">
-    <div id="viewport">
-      <video id="video" autoplay playsinline muted></video>
-      <img id="shot" alt="captured page" />
-      <div class="frame-guide" id="guide"></div>
-    </div>
+    <div id="viewport"><video id="video" autoplay playsinline muted></video><div class="frame-guide"></div></div>
     <div class="controls">
-      <button id="startCam" class="primary">Start camera</button>
-      <button id="capture" disabled>Capture</button>
-      <label class="upload btn">Upload photo<input id="file" type="file" accept="image/*" /></label>
-      <span class="grow"></span>
-      <div class="toggles">
-        <span>enhance</span>
-        <span class="chip on" id="tGray">grayscale</span>
-        <span class="chip on" id="tThresh">sharpen B/W</span>
+      <div class="row">
+        <button id="startCam" class="primary">Start camera</button>
+        <button id="capture" disabled>Capture</button>
+        <label class="upload btn">Upload<input id="file" type="file" accept="image/*" /></label>
+      </div>
+      <div class="row">
+        <span class="lbl">Content</span>
+        <span class="chip on" data-mode="document">Printed</span>
+        <span class="chip" data-mode="handwriting">Handwriting</span>
+        <span class="chip" data-mode="photo">Faint / pencil</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Engine</span>
+        <select id="engine">
+          <option value="auto" selected>Auto (best available)</option>
+          <option value="vision">AI Vision · Gemini Nano</option>
+          <option value="tess">Tesseract OCR</option>
+        </select>
+        <span class="pill" id="visionPill">vision: checking…</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Lang</span>
+        <select id="lang">
+          <option value="eng" selected>English</option>
+          <option value="eng+spa">Eng+Spanish</option><option value="eng+fra">Eng+French</option>
+          <option value="eng+deu">Eng+German</option><option value="spa">Spanish</option>
+          <option value="fra">French</option><option value="deu">German</option>
+          <option value="ita">Italian</option><option value="por">Portuguese</option>
+          <option value="nld">Dutch</option><option value="eng+hin">Eng+Hindi</option>
+          <option value="ara">Arabic</option><option value="rus">Russian</option>
+        </select>
+        <span class="lbl">Layout</span>
+        <select id="psm"><option value="3" selected>Auto</option><option value="4">Column</option><option value="6">Block</option><option value="11">Sparse</option></select>
+      </div>
+      <div class="row">
+        <span class="lbl">Enhance</span>
+        <span class="chip on" id="t_shadow">de-shadow</span>
+        <span class="chip on" id="t_clahe">local contrast</span>
+        <span class="chip on" id="t_straighten">straighten</span>
+        <span class="chip on" id="t_denoise">denoise</span>
       </div>
     </div>
   </section>
 
-  <!-- EDITOR -->
   <section id="editor">
     <div class="panes">
-      <div class="pane image"><img id="previewImg" alt="scanned page" /></div>
+      <div class="pane image"><canvas id="imgCanvas"></canvas></div>
       <div class="pane text">
-        <h2>Transcription — tap to edit</h2>
+        <h2>Transcription — tap a word to locate · edit freely</h2>
         <div id="transcript" contenteditable="true" spellcheck="true"></div>
       </div>
     </div>
     <div class="editor-bar">
-      <span class="legend">
-        <i><span class="swatch" style="background:var(--low)"></span>low conf.</i>
-        <i><span class="swatch" style="background:var(--mid)"></span>review</i>
-      </span>
-      <button id="rescan">↺ New scan</button>
-      <button id="expTxt">TXT</button>
-      <button id="expMd">Markdown</button>
-      <button id="expPdf" class="primary">PDF</button>
-      <button id="expDocx" class="accent">DOCX</button>
+      <div class="row">
+        <span class="legend">
+          <i><span class="swatch" style="background:var(--oxblood)"></span>low</i>
+          <i><span class="swatch" style="background:var(--amber)"></span>review</i>
+          <span class="pill" id="aiPill">AI clean</span>
+        </span>
+        <span class="grow"></span>
+        <button id="tidy">✦ Tidy</button>
+        <button id="aiClean" class="primary">✦ AI clean</button>
+        <button id="original">↺ orig</button>
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <button id="rescan">↺ Redo</button>
+        <button id="addPage">＋ Add page</button>
+        <span class="grow"></span>
+        <button id="expTxt">TXT</button><button id="expMd">MD</button>
+        <button id="expPdf">PDF</button><button id="expDocx" class="accent">DOCX</button>
+      </div>
     </div>
   </section>
-
   <div id="toast"></div>
 </main>
 
-<canvas id="work"></canvas>
-
 <script>
 (() => {
-  "use strict";
-  const $ = id => document.getElementById(id);
-  const video=$("video"), shot=$("shot"), guide=$("guide"),
-        startCam=$("startCam"), capture=$("capture"), file=$("file"),
-        stage=$("stage"), editor=$("editor"), previewImg=$("previewImg"),
-        transcript=$("transcript"), bar=$("progress").firstElementChild, toast=$("toast"),
-        work=$("work"), tGray=$("tGray"), tThresh=$("tThresh");
+"use strict";
+const $=id=>document.getElementById(id);
+const video=$("video"),startCam=$("startCam"),capture=$("capture"),file=$("file"),stage=$("stage"),editor=$("editor"),
+  imgCanvas=$("imgCanvas"),transcript=$("transcript"),bar=$("progress").firstElementChild,toast=$("toast"),
+  langSel=$("lang"),psmSel=$("psm"),engineSel=$("engine"),visionPill=$("visionPill"),aiPill=$("aiPill"),pageTag=$("pageTag");
+const T={shadow:$("t_shadow"),clahe:$("t_clahe"),straighten:$("t_straighten"),denoise:$("t_denoise")};
+let stream=null,mode="document",words=[],rawHtml="",procImg=new Image(),scaleToCanvas=1,docPages=[],visionOK=false;
 
-  let stream=null, lastDataUrl=null;
+const notify=(m,ms=2900)=>{toast.textContent=m;toast.classList.add("show");clearTimeout(notify._t);notify._t=setTimeout(()=>toast.classList.remove("show"),ms);};
+const setBar=p=>{bar.style.width=(p*100).toFixed(0)+"%";if(p>=1)setTimeout(()=>bar.style.width="0",500);};
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+Object.values(T).forEach(c=>c.addEventListener("click",()=>c.classList.toggle("on")));
+document.querySelectorAll("[data-mode]").forEach(c=>c.addEventListener("click",()=>{document.querySelectorAll("[data-mode]").forEach(x=>x.classList.remove("on"));c.classList.add("on");mode=c.dataset.mode;}));
 
-  function notify(msg, ms=2600){ toast.textContent=msg; toast.classList.add("show");
-    clearTimeout(notify._t); notify._t=setTimeout(()=>toast.classList.remove("show"), ms); }
-  function setBar(p){ bar.style.width=(p*100).toFixed(0)+"%"; if(p>=1) setTimeout(()=>bar.style.width="0",500); }
+/* ---- camera / input ---- */
+startCam.addEventListener("click",async()=>{
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:2560},height:{ideal:1440}},audio:false});
+    video.srcObject=stream;await video.play();capture.disabled=false;startCam.textContent="Camera on";startCam.disabled=true;}
+  catch(e){notify("Camera unavailable — use Upload.");console.warn(e);}
+});
+capture.addEventListener("click",()=>{if(!video.videoWidth){notify("Camera not ready.");return;}
+  const c=document.createElement("canvas");c.width=video.videoWidth;c.height=video.videoHeight;c.getContext("2d").drawImage(video,0,0);run(c);});
+file.addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const img=new Image();
+  img.onload=()=>{const c=document.createElement("canvas");c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext("2d").drawImage(img,0,0);run(c);URL.revokeObjectURL(img.src);};img.src=URL.createObjectURL(f);});
 
-  // ---------- Camera ----------
-  startCam.addEventListener("click", async () => {
-    try{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{ facingMode:{ideal:"environment"}, width:{ideal:1920}, height:{ideal:1080} }, audio:false });
-      video.srcObject = stream; await video.play();
-      capture.disabled=false; startCam.textContent="Camera on"; startCam.disabled=true;
-    }catch(e){
-      notify("Camera unavailable — use Upload photo instead.");
-      console.warn(e);
-    }
-  });
+/* =========== ADVANCED ENHANCEMENT =========== */
+function integral(g,w,h){const I=new Float64Array((w+1)*(h+1));for(let y=1;y<=h;y++){let rs=0;for(let x=1;x<=w;x++){rs+=g[(y-1)*w+(x-1)];I[y*(w+1)+x]=I[(y-1)*(w+1)+x]+rs;}}return I;}
+function boxMean(g,w,h,r){const I=integral(g,w,h),W=w+1,out=new Float32Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const x1=Math.max(0,x-r),y1=Math.max(0,y-r),x2=Math.min(w-1,x+r),y2=Math.min(h-1,y+r);
+    const a=(x2-x1+1)*(y2-y1+1),s=I[(y2+1)*W+(x2+1)]-I[y1*W+(x2+1)]-I[(y2+1)*W+x1]+I[y1*W+x1];out[y*w+x]=s/a;}return out;}
+function deShadow(g,w,h){ // divide by large-radius background -> flat illumination
+  const bg=boxMean(g,w,h,Math.max(12,Math.round(w/12))),out=new Float32Array(w*h);
+  for(let i=0;i<g.length;i++){let v=255*g[i]/(bg[i]+1);out[i]=v>255?255:v;}return out;}
+function clahe(g,w,h,tiles,clip){ // contrast-limited adaptive histogram equalization
+  const tw=Math.ceil(w/tiles),th=Math.ceil(h/tiles),maps=[];
+  for(let ty=0;ty<tiles;ty++)for(let tx=0;tx<tiles;tx++){
+    const x0=tx*tw,y0=ty*th,x1=Math.min(w,x0+tw),y1=Math.min(h,y0+th),hist=new Float64Array(256);let n=0;
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){hist[g[y*w+x]|0]++;n++;}
+    const limit=clip*n/256;let excess=0;for(let i=0;i<256;i++){if(hist[i]>limit){excess+=hist[i]-limit;hist[i]=limit;}}
+    const inc=excess/256;for(let i=0;i<256;i++)hist[i]+=inc;
+    const cdf=new Float64Array(256);let c=0;for(let i=0;i<256;i++){c+=hist[i];cdf[i]=c;}
+    const map=new Uint8ClampedArray(256);for(let i=0;i<256;i++)map[i]=Math.round(255*cdf[i]/(n||1));maps.push(map);}
+  const out=new Float32Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const fx=(x/tw)-0.5,fy=(y/th)-0.5;let tx=Math.floor(fx),ty=Math.floor(fy);
+    const dx=fx-tx,dy=fy-ty;tx=Math.max(0,Math.min(tiles-1,tx));ty=Math.max(0,Math.min(tiles-1,ty));
+    const tx2=Math.min(tiles-1,tx+1),ty2=Math.min(tiles-1,ty+1),v=g[y*w+x]|0;
+    const a=maps[ty*tiles+tx][v],b=maps[ty*tiles+tx2][v],cc=maps[ty2*tiles+tx][v],d=maps[ty2*tiles+tx2][v];
+    out[y*w+x]=(a*(1-dx)+b*dx)*(1-dy)+(cc*(1-dx)+d*dx)*dy;}
+  return out;}
+function unsharp(g,w,h,amt,r){const bg=boxMean(g,w,h,r),out=new Float32Array(w*h);
+  for(let i=0;i<g.length;i++){let v=g[i]+amt*(g[i]-bg[i]);out[i]=v<0?0:v>255?255:v;}return out;}
+function median3(g,w,h){const out=new Float32Array(w*h),win=new Array(9);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let k=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const yy=Math.min(h-1,Math.max(0,y+dy)),xx=Math.min(w-1,Math.max(0,x+dx));win[k++]=g[yy*w+xx];}
+    win.sort((a,b)=>a-b);out[y*w+x]=win[4];}return out;}
+function bradley(g,w,h,t){const I=integral(g,w,h),W=w+1,s=Math.max(8,Math.floor(w/28)),half=s>>1,out=new Uint8ClampedArray(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const x1=Math.max(0,x-half),y1=Math.max(0,y-half),x2=Math.min(w-1,x+half),y2=Math.min(h-1,y+half);
+    const cnt=(x2-x1+1)*(y2-y1+1),sum=I[(y2+1)*W+(x2+1)]-I[y1*W+(x2+1)]-I[(y2+1)*W+x1]+I[y1*W+x1];
+    out[y*w+x]=(g[y*w+x]*cnt<=sum*(100-t)/100)?0:255;}return out;}
+function detectSkew(g,w,h){let best=0,bestScore=-1;
+  for(let a=-6;a<=6;a++){const rad=a*Math.PI/180,cs=Math.cos(rad),sn=Math.sin(rad),cx=w/2,cy=h/2,hist=new Float64Array(h);
+    for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const dark=255-g[y*w+x];const ry=Math.round((x-cx)*sn+(y-cy)*cs+cy);if(ry>=0&&ry<h)hist[ry]+=dark;}
+    let sc=0;for(let i=1;i<h;i++){const dd=hist[i]-hist[i-1];sc+=dd*dd;}if(sc>bestScore){bestScore=sc;best=a;}}return best;}
+function rotate(src,deg){const rad=deg*Math.PI/180,w=src.width,h=src.height,c=document.createElement("canvas");c.width=w;c.height=h;
+  const ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.translate(w/2,h/2);ctx.rotate(-rad);ctx.drawImage(src,-w/2,-h/2);return c;}
 
-  capture.addEventListener("click", () => {
-    if(!video.videoWidth){ notify("Camera not ready yet."); return; }
-    const c=document.createElement("canvas");
-    c.width=video.videoWidth; c.height=video.videoHeight;
-    c.getContext("2d").drawImage(video,0,0);
-    processImage(c);
-  });
+function enhance(src){
+  let scale=Math.min(2.2,Math.max(1,1700/src.width));if(src.width>2200)scale=2200/src.width;
+  let w=Math.round(src.width*scale),h=Math.round(src.height*scale);
+  let c=document.createElement("canvas");c.width=w;c.height=h;let ctx=c.getContext("2d");
+  ctx.imageSmoothingQuality="high";ctx.drawImage(src,0,0,w,h);
+  let img=ctx.getImageData(0,0,w,h),d=img.data,g=new Float32Array(w*h);
+  for(let i=0,j=0;i<d.length;i+=4,j++)g[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+  if(T.straighten.classList.contains("on")){const a=detectSkew(g,w,h);
+    if(Math.abs(a)>=1){for(let i=0,j=0;i<d.length;i+=4,j++){d[i]=d[i+1]=d[i+2]=g[j];}ctx.putImageData(img,0,0);
+      c=rotate(c,a);ctx=c.getContext("2d");img=ctx.getImageData(0,0,w,h);d=img.data;for(let i=0,j=0;i<d.length;i+=4,j++)g[j]=d[i];}}
+  if(T.shadow.classList.contains("on"))g=deShadow(g,w,h);
+  if(T.clahe.classList.contains("on"))g=clahe(g,w,h,8,3.0);
+  g=unsharp(g,w,h,mode==="handwriting"?0.6:0.9,1);
+  if(T.denoise.classList.contains("on"))g=median3(g,w,h);
+  if(mode==="document"){const bw=bradley(g,w,h,12);for(let i=0,j=0;i<d.length;i+=4,j++)d[i]=d[i+1]=d[i+2]=bw[j];}
+  else{for(let i=0,j=0;i<d.length;i+=4,j++){const v=g[j];d[i]=d[i+1]=d[i+2]=v<0?0:v>255?255:v;}}
+  ctx.putImageData(img,0,0);return c;
+}
 
-  file.addEventListener("change", e => {
-    const f=e.target.files && e.target.files[0]; if(!f) return;
-    const img=new Image();
-    img.onload=()=>{ const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight;
-      c.getContext("2d").drawImage(img,0,0); processImage(c); URL.revokeObjectURL(img.src); };
-    img.src=URL.createObjectURL(f);
-  });
+/* =========== RUN PIPELINE =========== */
+async function run(src){
+  setBar(0.04);notify("Enhancing image…",1500);
+  await new Promise(r=>setTimeout(r,10));
+  const out=enhance(src);
+  const dispW=Math.min(out.width,1200);scaleToCanvas=dispW/out.width;
+  imgCanvas.width=Math.round(out.width*scaleToCanvas);imgCanvas.height=Math.round(out.height*scaleToCanvas);
+  imgCanvas.getContext("2d").drawImage(out,0,0,imgCanvas.width,imgCanvas.height);procImg=out;
+  stage.style.display="none";editor.classList.add("show");transcript.innerHTML='<span class="empty-hint">Reading text…</span>';
+  if(stream){stream.getTracks().forEach(t=>t.stop());}
+  const eng=engineSel.value;
+  let done=false;
+  if(eng==="vision"||(eng==="auto"&&visionOK)){done=await visionRecognize(out);}
+  if(!done){await tesseractRecognize(out);}
+}
 
-  // ---------- Preprocess (grayscale / contrast / threshold) ----------
-  function preprocess(srcCanvas){
-    const MAXW=1600;
-    const scale = Math.min(1, MAXW/srcCanvas.width);
-    const w=Math.round(srcCanvas.width*scale), h=Math.round(srcCanvas.height*scale);
-    work.width=w; work.height=h;
-    const ctx=work.getContext("2d");
-    ctx.drawImage(srcCanvas,0,0,w,h);
-    const doGray=tGray.classList.contains("on"), doThresh=tThresh.classList.contains("on");
-    if(!doGray && !doThresh) return;
-    const img=ctx.getImageData(0,0,w,h), d=img.data;
-    // grayscale + mild contrast
-    let sum=0;
-    for(let i=0;i<d.length;i+=4){
-      let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-      g=(g-128)*1.15+128;                  // contrast
-      g=Math.max(0,Math.min(255,g));
-      d[i]=d[i+1]=d[i+2]=g; sum+=g;
-    }
-    if(doThresh){
-      // adaptive-ish: threshold around mean, slight bias to keep ink
-      const mean=sum/(d.length/4);
-      const t=mean*0.92;
-      for(let i=0;i<d.length;i+=4){ const v=d[i]<t?0:255; d[i]=d[i+1]=d[i+2]=v; }
-    }
-    ctx.putImageData(img,0,0);
-  }
+/* on-device multimodal Gemini Nano: transcribe the image directly */
+async function visionAvail(){try{if(!("LanguageModel" in self))return false;
+  const a=await LanguageModel.availability({expectedInputs:[{type:"image"}]});return a&&a!=="unavailable";}catch(e){return false;}}
+async function visionRecognize(canvas){
+  try{
+    setBar(0.12);notify("AI Vision reading (on-device)…",2500);
+    const session=await LanguageModel.create({expectedInputs:[{type:"image"}],
+      monitor(m){m.addEventListener&&m.addEventListener("downloadprogress",e=>setBar(0.12+0.7*(e.loaded||0)));}});
+    const out=await session.prompt(["Transcribe ALL text in this image exactly as written. Include handwriting and any language or script. Preserve line breaks, lists, headings and indentation. Output ONLY the transcribed text with no commentary.",
+      {type:"image",content:canvas}]);
+    session.destroy&&session.destroy();
+    const text=(out||"").trim();if(!text){return false;}
+    words=[];rawHtml="";transcript.textContent=text;setBar(1);
+    notify("AI Vision transcription — fully on-device.");return true;
+  }catch(err){console.warn("vision failed",err);notify("AI Vision unavailable — using Tesseract.");return false;}
+}
 
-  // ---------- Run pipeline ----------
-  async function processImage(srcCanvas){
-    preprocess(srcCanvas);
-    lastDataUrl = work.toDataURL("image/png");
-    previewImg.src = lastDataUrl;
-    // switch to editor immediately (fast path UI)
-    stage.style.display="none"; editor.classList.add("show");
-    transcript.innerHTML = '<span style="color:var(--muted);font-style:italic">Reading text…</span>';
-    if(stream){ stream.getTracks().forEach(t=>t.stop()); }
-    await runOCR(work);
-  }
+async function tesseractRecognize(canvas){
+  if(typeof Tesseract==="undefined"){transcript.innerHTML="";notify("OCR offline — type & export still work.");transcript.focus();return;}
+  try{setBar(0.1);
+    const worker=await Tesseract.createWorker(langSel.value,1,{logger:m=>{if(m.status==="recognizing text")setBar(0.2+0.78*m.progress);}});
+    await worker.setParameters({tessedit_pageseg_mode:psmSel.value,preserve_interword_spaces:"1",user_defined_dpi:"300"});
+    const {data}=await worker.recognize(canvas);await worker.terminate();renderWords(data);setBar(1);
+    notify("Tesseract done — tap flagged words or run AI clean.");
+  }catch(err){console.error(err);transcript.innerHTML="";notify("OCR data needs network first time. Type & export still work.");transcript.focus();setBar(1);}
+}
+function renderWords(data){words=[];const ws=(data.words||[]).filter(w=>w.text&&w.text.trim());
+  if(!ws.length){transcript.innerHTML='<span class="empty-hint">No text found. Try Handwriting/Faint mode, better light, or type it in.</span>';rawHtml="";return;}
+  let html="",lastY=null,idx=0;
+  for(const w of ws){const y=w.bbox?w.bbox.y0:0;if(lastY!==null&&Math.abs(y-lastY)>10)html+="\n";else if(lastY!==null)html+=" ";
+    const c=w.confidence,cls=c<55?"w-low":c<78?"w-mid":"w-ok";words.push({bbox:w.bbox});html+=`<span class="${cls}" data-i="${idx}">${esc(w.text)}</span>`;lastY=y;idx++;}
+  rawHtml=html;transcript.innerHTML=html;}
+transcript.addEventListener("click",e=>{const sp=e.target.closest("span[data-i]");if(!sp)return;const w=words[+sp.dataset.i];if(!w||!w.bbox)return;
+  const ctx=imgCanvas.getContext("2d");ctx.drawImage(procImg,0,0,imgCanvas.width,imgCanvas.height);const s=scaleToCanvas;
+  ctx.strokeStyle="#b03a2e";ctx.lineWidth=3;ctx.strokeRect(w.bbox.x0*s,w.bbox.y0*s,(w.bbox.x1-w.bbox.x0)*s,(w.bbox.y1-w.bbox.y0)*s);
+  imgCanvas.scrollIntoView({block:"nearest",behavior:"smooth"});});
 
-  async function runOCR(canvas){
-    if(typeof Tesseract==="undefined"){
-      transcript.innerHTML="";
-      notify("OCR engine offline — type your transcription, export still works.");
-      transcript.focus();
-      return;
-    }
-    setBar(0.05);
-    try{
-      const worker = await Tesseract.createWorker("eng", 1, {
-        logger: m => { if(m.status==="recognizing text") setBar(0.2+0.8*m.progress); }
-      });
-      const { data } = await worker.recognize(canvas);
-      await worker.terminate();
-      renderWords(data);
-      setBar(1);
-      notify("Transcribed — review highlighted words.");
-    }catch(err){
-      console.error(err);
-      transcript.innerHTML="";
-      notify("Couldn’t load OCR data (needs network first time). You can still type & export.");
-      transcript.focus();
-      setBar(1);
-    }
-  }
+/* =========== CLEANUP =========== */
+const currentText=()=>{const h=transcript.innerHTML.replace(/<div>/gi,"\n").replace(/<br\s*\/?>/gi,"\n").replace(/<\/div>/gi,"");const t=document.createElement("div");t.innerHTML=h;return (t.textContent||"").replace(/\u00a0/g," ");};
+const heuristicTidy=t=>t.replace(/(\w)[-\u00ad]\n(\w)/g,"$1$2").replace(/[ \t]+/g," ").replace(/ \n/g,"\n").replace(/\n /g,"\n").replace(/\s+([,.;:!?])/g,"$1").replace(/([,.;:!?])(?=[^\s)\]"'])/g,"$1 ").replace(/\n{3,}/g,"\n\n").trim();
+$("tidy").addEventListener("click",()=>{transcript.textContent=heuristicTidy(currentText());notify("Tidied spacing, hyphens & punctuation.");});
+$("original").addEventListener("click",()=>{if(rawHtml){transcript.innerHTML=rawHtml;notify("Restored original with confidence flags.");}else notify("No flagged original for this engine.");});
+async function textAIAvail(){try{if(!("LanguageModel" in self))return"none";return await LanguageModel.availability({languages:["en"]});}catch(e){return"none";}}
+$("aiClean").addEventListener("click",async()=>{const text=currentText().trim();if(!text){notify("Nothing to clean.");return;}
+  const a=await textAIAvail();
+  if(a==="none"||a==="unavailable"){transcript.textContent=heuristicTidy(text);notify("On-device AI not available — applied smart Tidy.");return;}
+  try{setBar(0.1);aiPill.textContent="AI working…";aiPill.className="pill warn";
+    const s=await LanguageModel.create({initialPrompts:[{role:"system",content:"You are an OCR post-processor. Fix obvious OCR errors, word spacing and broken line breaks; restore natural paragraphs and lists. Preserve the author's wording, meaning, numbers and structure. Do not summarize, comment, or invent. Return ONLY corrected document text."}],
+      monitor(m){m.addEventListener&&m.addEventListener("downloadprogress",e=>setBar(0.1+0.7*(e.loaded||0)));}});
+    const out=await s.prompt("Correct and clean this scanned text:\n\n"+text);s.destroy&&s.destroy();
+    transcript.textContent=(out||"").trim()||text;setBar(1);aiPill.textContent="AI cleaned ✓";aiPill.className="pill ok";notify("Cleaned on-device — nothing left your phone.");
+  }catch(err){console.error(err);transcript.textContent=heuristicTidy(text);setBar(1);aiPill.textContent="fell back to Tidy";aiPill.className="pill warn";notify("AI busy — applied smart Tidy.");}});
 
-  function esc(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+/* =========== MULTI-PAGE + EXPORT =========== */
+function refreshPageTag(){pageTag.textContent=docPages.length?`page ${docPages.length+1} · ${docPages.length} saved`:"pro scanner";}
+$("addPage").addEventListener("click",()=>{const t=currentText().trim();if(t)docPages.push(t);refreshPageTag();
+  editor.classList.remove("show");stage.style.display="flex";capture.disabled=true;startCam.disabled=false;startCam.textContent="Start camera";
+  transcript.innerHTML="";file.value="";words=[];rawHtml="";notify(`Page saved (${docPages.length}). Scan the next one.`);});
+$("rescan").addEventListener("click",()=>{editor.classList.remove("show");stage.style.display="flex";capture.disabled=true;startCam.disabled=false;startCam.textContent="Start camera";transcript.innerHTML="";file.value="";words=[];rawHtml="";});
+function allPages(){const cur=currentText().trim();const arr=docPages.slice();if(cur)arr.push(cur);return arr;}
+const dl=(blob,name)=>{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);};
+const stamp=()=>new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+$("expTxt").addEventListener("click",()=>{dl(new Blob([allPages().join("\n\n")],{type:"text/plain"}),`scan-${stamp()}.txt`);notify("Saved .txt");});
+$("expMd").addEventListener("click",()=>{const md="# Scanned Document\n\n"+allPages().map((p,i)=>(docPages.length?`## Page ${i+1}\n\n`:"")+p.split("\n").map(l=>l.trim()).join("\n\n")).join("\n\n---\n\n")+"\n";dl(new Blob([md],{type:"text/markdown"}),`scan-${stamp()}.md`);notify("Saved .md");});
+$("expPdf").addEventListener("click",()=>{if(!window.jspdf){notify("PDF lib loading…");return;}const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"pt",format:"a4"});
+  const m=56,W=doc.internal.pageSize.getWidth()-m*2,H=doc.internal.pageSize.getHeight();doc.setFont("times","normal");doc.setFontSize(12);
+  const pages=allPages();pages.forEach((p,pi)=>{if(pi>0)doc.addPage();let y=m;const lines=doc.splitTextToSize(p,W);for(const ln of lines){if(y>H-m){doc.addPage();y=m;}doc.text(ln,m,y);y+=18;}});
+  doc.save(`scan-${stamp()}.pdf`);notify("Saved .pdf");});
+$("expDocx").addEventListener("click",async()=>{if(typeof JSZip==="undefined"){notify("DOCX lib loading…");return;}
+  const pages=allPages();let body="";pages.forEach((p,pi)=>{if(pi>0)body+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+    body+=p.split("\n").map(line=>`<w:p><w:r><w:t xml:space="preserve">${esc(line.length?line:" ")}</w:t></w:r></w:p>`).join("");});
+  const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+  const zip=new JSZip();zip.file("[Content_Types].xml",ct);zip.folder("_rels").file(".rels",rels);zip.folder("word").file("document.xml",documentXml);
+  const blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});dl(blob,`scan-${stamp()}.docx`);notify("Saved .docx");});
 
-  function renderWords(data){
-    const words = (data.words||[]).filter(w=>w.text && w.text.trim());
-    if(!words.length){
-      transcript.innerHTML = '<span class="empty-hint">No text detected. Try better lighting, the “sharpen B/W” toggle, or type it in.</span>';
-      transcript.focus(); return;
-    }
-    let html="", lastLine=null;
-    for(const w of words){
-      const line = w.line ? w.line.bbox.y0 : (w.bbox? w.bbox.y0:0);
-      if(lastLine!==null && Math.abs(line-lastLine) > 8) html+="\n";
-      else if(lastLine!==null) html+=" ";
-      const c=w.confidence;
-      const cls = c<55 ? "w-low" : c<78 ? "w-mid" : "";
-      html += cls ? `<span class="${cls}">${esc(w.text)}</span>` : esc(w.text);
-      lastLine=line;
-    }
-    transcript.innerHTML=html;
-  }
-
-  // ---------- Toggles ----------
-  [tGray,tThresh].forEach(c=>c.addEventListener("click",()=>c.classList.toggle("on")));
-
-  // ---------- Re-scan ----------
-  $("rescan").addEventListener("click", ()=>{
-    editor.classList.remove("show"); stage.style.display="flex";
-    capture.disabled=true; startCam.disabled=false; startCam.textContent="Start camera";
-    transcript.innerHTML=""; file.value="";
-  });
-
-  // ---------- Exports ----------
-  function plainText(){
-    // contenteditable -> text with line breaks preserved
-    const html = transcript.innerHTML.replace(/<div>/gi,"\n").replace(/<br\s*\/?>/gi,"\n").replace(/<\/div>/gi,"");
-    const tmp=document.createElement("div"); tmp.innerHTML=html;
-    return (tmp.textContent||"").replace(/\u00a0/g," ").trim();
-  }
-  function download(blob, name){
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-  }
-  const stamp=()=> new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
-
-  $("expTxt").addEventListener("click", ()=>{ download(new Blob([plainText()],{type:"text/plain"}), `scan-${stamp()}.txt`); notify("Saved .txt"); });
-  $("expMd").addEventListener("click", ()=>{
-    const t=plainText(); const md=`# Scanned Document\n\n${t.split("\n").map(l=>l.trim()).join("\n\n")}\n`;
-    download(new Blob([md],{type:"text/markdown"}), `scan-${stamp()}.md`); notify("Saved .md");
-  });
-
-  $("expPdf").addEventListener("click", ()=>{
-    if(!window.jspdf){ notify("PDF library still loading…"); return; }
-    const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
-    const margin=56, width=doc.internal.pageSize.getWidth()-margin*2, height=doc.internal.pageSize.getHeight();
-    doc.setFont("times","normal"); doc.setFontSize(12);
-    const lines=doc.splitTextToSize(plainText(), width);
-    let y=margin;
-    for(const ln of lines){ if(y>height-margin){ doc.addPage(); y=margin; } doc.text(ln,margin,y); y+=18; }
-    doc.save(`scan-${stamp()}.pdf`); notify("Saved .pdf");
-  });
-
-  $("expDocx").addEventListener("click", async ()=>{
-    if(typeof JSZip==="undefined"){ notify("DOCX library still loading…"); return; }
-    const paras = plainText().split("\n").map(p=>p.length?p:" ");
-    const body = paras.map(p=>`<w:p><w:r><w:t xml:space="preserve">${esc(p)}</w:t></w:r></w:p>`).join("");
-    const documentXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
-    const contentTypes=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
-    const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
-    const zip=new JSZip();
-    zip.file("[Content_Types].xml", contentTypes);
-    zip.folder("_rels").file(".rels", rels);
-    zip.folder("word").file("document.xml", documentXml);
-    const blob=await zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
-    download(blob, `scan-${stamp()}.docx`); notify("Saved .docx");
-  });
-
-  // ---------- PWA service worker ----------
-  if("serviceWorker" in navigator){
-    window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
-  }
+/* ---- boot ---- */
+(async()=>{visionOK=await visionAvail();
+  if(visionOK){visionPill.textContent="vision: ready (Nano)";visionPill.className="pill ok";}
+  else{visionPill.textContent="vision: not on this device";visionPill.className="pill";}
+  const ta=await textAIAvail();aiPill.textContent=(ta==="available")?"AI ready":(ta==="downloadable"||ta==="downloading")?"AI: tap to enable":"AI→Tidy";
+  aiPill.className=(ta==="available")?"pill ok":"pill";})();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
 })();
 </script>
 </body>
