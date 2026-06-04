@@ -1,4 +1,4 @@
-const CACHE = "inktoprint-v6";
+const CACHE = "inktoprint-v7";
 const SHELL = [
   "./",
   "./index.html",
